@@ -7,6 +7,11 @@ __pycache__/
 .pytest_cache/
 dist/
 build/
+*.dist/
+*.build/
+*.onefile-build/
+nlp-worker/java-client/.deps/
+nlp-worker/java-client/target/
 *.tsbuildinfo
 *.log
 .DS_Store

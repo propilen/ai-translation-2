@@ -1,0 +1,8 @@
+# Versions observed in the project's Windows x64 Python 3.11.9 environment.
+pymorphy3==2.0.6
+pymorphy3-dicts-ru==2.4.417150.4580142
+spacy==3.8.16
+Nuitka==4.2.2
+ordered-set==4.1.0
+zstandard==0.25.0
+# spaCy model wheels are installed from their official release assets (README).

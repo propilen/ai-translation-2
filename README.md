@@ -1,5 +1,7 @@
 # LinguaFlow: локальный сервис перевода DOCX
 
+Автономный NLP Worker для Java Desktop (JSON Lines, Windows standalone, неизменённые алгоритмы глоссария) описан в [nlp-worker/README.md](nlp-worker/README.md). Он работает отдельно от веб-сервиса.
+
 ## Установка на новый Windows-сервер
 
 Запустите PowerShell **от имени администратора** в папке распакованного проекта:

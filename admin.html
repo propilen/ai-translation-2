@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LinguaFlow — Администрирование</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="admin.css?v=4" />
+    <link rel="stylesheet" href="/settings-layout.css?v=2" />
+  </head>
+  <body class="layout-enabled admin-page">
+    <main class="page-shell">
+      <nav class="app-nav" aria-label="Навигация">
+        <a class="brand" href="/"><img src="/assets/linguaflow-logo.svg" alt="LinguaFlow" /></a>
+        <div class="nav-links"><a href="/">Перевод</a><a href="/settings.html">Настройки</a><a class="is-active" href="/admin">Администрирование</a></div>
+        <button id="logout" type="button">Выйти</button>
+      </nav>
+      <section class="intro"><h1>Администрирование <em>сервиса</em></h1><p>Создавайте учётные записи и управляйте доступом сотрудников к настройкам ИИ и шаблонам обработки документов.</p></section>
+      <div class="settings-workspace">
+      <div class="settings-sidebar-space" aria-hidden="true"></div>
+      <div class="admin-content">
+      <section id="users-panel" class="panel" aria-labelledby="users-title">
+        <div class="panel-heading"><div class="panel-title"><span class="admin-section-icon" aria-hidden="true"></span><div><h2 id="users-title">Пользователи</h2><p id="user-count">Загрузка…</p></div></div><button id="open-create" class="primary-button" type="button"><span aria-hidden="true">+</span> Создать пользователя</button></div>
+        <p class="panel-description">Нажмите на пользователя, чтобы открыть его карточку и изменить права доступа.</p>
+        <div class="table-wrap"><table><thead><tr><th>Имя пользователя</th><th>Роль</th><th>Создан</th></tr></thead><tbody id="users"></tbody></table></div>
+      </section>
+      <section id="memory-keys-panel" class="panel memory-keys-panel" aria-labelledby="memory-keys-title">
+        <div class="panel-heading"><div class="panel-title"><span class="admin-section-icon memory-section-icon" aria-hidden="true"></span><div><h2 id="memory-keys-title">Памяти переводов</h2><p>API-ключи для поиска, чтения и записи в памяти переводов.</p></div></div></div>
+        <p class="panel-description">Создайте ключ для всех загруженных памятей или ограничьте его одной памятью. По умолчанию ключ имеет право чтения; права можно изменить в карточке ключа. Секрет показывается только после создания или замены.</p>
+        <form id="memory-key-form" class="memory-key-form">
+          <label>Название ключа<input id="memory-key-name" maxlength="100" required placeholder="Например, CAT-интеграция" /></label>
+          <label>Доступ к памяти<select id="memory-key-scope"><option value="">Все памяти переводов</option></select></label>
+          <button class="primary-button" type="submit">Сгенерировать ключ</button>
+        </form>
+        <p id="memory-key-message" class="memory-key-message" role="status" aria-live="polite"></p>
+        <div id="new-memory-key" class="new-memory-key" hidden><strong>Скопируйте ключ сейчас</strong><div><input id="new-memory-key-secret" readonly /><button id="copy-memory-key" type="button">Копировать</button></div></div>
+        <div class="table-wrap"><table><thead><tr><th>Название</th><th>Доступ</th><th>Префикс</th><th>Последнее использование</th><th></th></tr></thead><tbody id="memory-keys"></tbody></table></div>
+      </section>
+      </div>
+      </div>
+    </main>
+
+    <div id="create-overlay" class="overlay" hidden>
+      <form id="create-form" class="dialog" aria-labelledby="create-title">
+        <button id="close-create" class="close" type="button" aria-label="Закрыть">×</button>
+        <p class="eyebrow">Новая учётная запись</p><h2 id="create-title">Создать пользователя</h2>
+        <label>Имя пользователя<input id="new-username" autocomplete="off" minlength="3" maxlength="80" required /></label>
+        <label>Пароль<div class="password-row"><input id="new-password" type="text" minlength="8" maxlength="256" required /><button id="generate-password" type="button">Сгенерировать</button></div><small>Пароль можно изменить вручную перед созданием.</small></label>
+        <p id="create-message" role="alert"></p><button class="primary-button" type="submit">Создать пользователя</button>
+      </form>
+    </div>
+    <div id="card-overlay" class="overlay" hidden>
+      <form id="card-form" class="dialog user-card" role="dialog" aria-modal="true" aria-labelledby="card-title">
+        <button id="close-card" class="close" type="button" aria-label="Закрыть">×</button>
+        <header class="user-card-heading"><span class="admin-section-icon" aria-hidden="true"></span><div><h2 id="card-title">Карточка пользователя</h2><p>Учётная запись и доступ к разделам сервиса.</p></div></header>
+        <input id="card-id" type="hidden" />
+        <div class="user-card-fields">
+        <label>Логин<input id="card-username" readonly /></label>
+        <label>Новый пароль<input id="card-password" type="text" autocomplete="new-password" minlength="8" maxlength="256" placeholder="Введите новый пароль" /><small>Оставьте пустым, чтобы сохранить текущий пароль.</small></label>
+        </div>
+        <fieldset class="user-card-permissions"><legend>Права доступа</legend>
+        <label class="permission"><input id="card-settings" type="checkbox" /><span>Настройки ИИ<small>Доступ к параметрам модели и перевода.</small></span></label>
+        <label class="permission"><input id="card-filters" type="checkbox" /><span>Шаблоны MS Word<small>Создание и редактирование фильтров OpenXML.</small></span></label>
+        </fieldset>
+        <footer class="user-card-footer"><p id="card-message" role="status" aria-live="polite"></p><button class="primary-button" type="submit">Сохранить</button></footer>
+      </form>
+    </div>
+    <div id="memory-key-overlay" class="overlay" hidden>
+      <form id="memory-key-edit-form" class="dialog memory-key-dialog" role="dialog" aria-modal="true" aria-labelledby="memory-key-edit-title">
+        <button id="close-memory-key-edit" class="close" type="button" aria-label="Закрыть">×</button>
+        <p class="eyebrow">API-ключ памяти переводов</p><h2 id="memory-key-edit-title">Изменить API-ключ</h2>
+        <input id="edit-memory-key-id" type="hidden" />
+        <label>Название ключа<input id="edit-memory-key-name" maxlength="100" required /></label>
+        <label>Доступ к памяти<select id="edit-memory-key-scope"><option value="">Все памяти переводов</option></select></label>
+        <label>Ключ<div class="password-row"><input id="edit-memory-key-secret" autocomplete="off" placeholder="Оставьте пустым, чтобы не менять" /><button id="generate-edit-memory-key" type="button">Сгенерировать</button></div><small>Текущий ключ повторно не показывается. Новый ключ заменит прежний сразу после сохранения.</small></label>
+        <fieldset class="user-card-permissions memory-key-permissions"><legend>Права доступа</legend>
+          <label class="permission"><input id="edit-memory-key-read" type="checkbox" checked /><span>Чтение <small>(поиск, список и скачивание памяти переводов)</small></span></label>
+          <label class="permission"><input id="edit-memory-key-write" type="checkbox" /><span>Запись <small>(импорт TMX и добавление сегментов в разрешённую память)</small></span></label>
+        </fieldset>
+        <footer class="user-card-footer"><p id="edit-memory-key-message" role="status" aria-live="polite"></p><button class="primary-button" type="submit">Сохранить</button></footer>
+      </form>
+    </div>
+    <script>
+      const usersElement = document.getElementById('users');
+      const overlay = document.getElementById('create-overlay');
+      const form = document.getElementById('create-form');
+      const createMessage = document.getElementById('create-message');
+      const password = document.getElementById('new-password');
+      const username = document.getElementById('new-username');
+      const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char]);
+      function generatePassword() {
+        const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+        const bytes = crypto.getRandomValues(new Uint32Array(16));
+        password.value = Array.from(bytes, value => alphabet[value % alphabet.length]).join('');
+      }
+      async function loadUsers() {
+        const response = await fetch('/api/admin/users'); const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || 'Не удалось загрузить список пользователей.');
+        document.getElementById('user-count').textContent = `Всего: ${result.users.length}`;
+        usersElement.innerHTML = result.users.map(user => `<tr class="user-row" data-user-id="${user.id}" tabindex="0"><td><strong>${escapeHtml(user.username)}</strong></td><td><span class="role ${user.is_admin ? 'admin' : ''}">${user.is_admin ? 'Администратор' : 'Пользователь'}</span></td><td>${new Date(user.created_at).toLocaleString('ru-RU')}</td></tr>`).join('');
+      }
+      function openCreate() { createMessage.textContent = ''; username.value = ''; generatePassword(); overlay.hidden = false; username.focus(); }
+      function closeCreate() { overlay.hidden = true; }
+      document.getElementById('open-create').addEventListener('click', openCreate);
+      document.getElementById('close-create').addEventListener('click', closeCreate);
+      document.getElementById('generate-password').addEventListener('click', generatePassword);
+      overlay.addEventListener('click', event => { if (event.target === overlay) closeCreate(); });
+      const cardOverlay = document.getElementById('card-overlay'); const cardForm = document.getElementById('card-form');
+      async function openCard(id) {
+        const response = await fetch(`/api/admin/users/${id}`); const result = await response.json(); if (!response.ok) throw new Error(result.detail || 'Не удалось открыть карточку.');
+        const user = result.user; document.getElementById('card-id').value = user.id; document.getElementById('card-username').value = user.username; document.getElementById('card-password').value = ''; document.getElementById('card-settings').checked = user.can_access_settings || user.is_admin; document.getElementById('card-filters').checked = user.can_manage_filters || user.is_admin; document.getElementById('card-settings').disabled = user.is_admin; document.getElementById('card-filters').disabled = user.is_admin; document.getElementById('card-message').textContent = user.is_admin ? 'Права администратора включают все разделы.' : 'Текущий пароль не отображается; здесь можно установить новый.'; cardOverlay.hidden = false;
+      }
+      usersElement.addEventListener('click', event => { const row = event.target.closest('.user-row'); if (row) openCard(row.dataset.userId).catch(error => alert(error.message)); });
+      usersElement.addEventListener('keydown', event => { if ((event.key === 'Enter' || event.key === ' ') && event.target.classList.contains('user-row')) { event.preventDefault(); openCard(event.target.dataset.userId).catch(error => alert(error.message)); } });
+      document.getElementById('close-card').addEventListener('click', () => cardOverlay.hidden = true);
+      cardOverlay.addEventListener('click', event => { if (event.target === cardOverlay) cardOverlay.hidden = true; });
+      cardForm.addEventListener('submit', async event => { event.preventDefault(); const id = document.getElementById('card-id').value; const message = document.getElementById('card-message'); try { const response = await fetch(`/api/admin/users/${id}`, {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:document.getElementById('card-password').value || null,can_access_settings:document.getElementById('card-settings').checked,can_manage_filters:document.getElementById('card-filters').checked})}); const result = await response.json(); if (!response.ok) throw new Error(result.detail || 'Не удалось сохранить карточку.'); message.textContent = 'Карточка сохранена.'; document.getElementById('card-password').value = ''; await loadUsers(); } catch(error) { message.textContent = error.message; } });
+      document.getElementById('logout').addEventListener('click', async () => { await fetch('/api/auth/logout', { method:'POST' }); location.assign('/login'); });
+      form.addEventListener('submit', async event => {
+        event.preventDefault(); createMessage.textContent = '';
+        const submit = form.querySelector('[type="submit"]'); submit.disabled = true;
+        try {
+          const response = await fetch('/api/admin/users', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ username:username.value, password:password.value }) });
+          const result = await response.json(); if (!response.ok) throw new Error(result.detail || 'Не удалось создать пользователя.');
+          closeCreate(); await loadUsers();
+        } catch (error) { createMessage.textContent = error.message; } finally { submit.disabled = false; }
+      });
+      const memoryKeysElement = document.getElementById('memory-keys');
+      const memoryKeyForm = document.getElementById('memory-key-form');
+      const memoryKeyScope = document.getElementById('memory-key-scope');
+      const memoryKeyOverlay = document.getElementById('memory-key-overlay');
+      const memoryKeyEditForm = document.getElementById('memory-key-edit-form');
+      let memoryIndex = new Map();
+      let memories = [];
+      const formatDate = value => value ? new Date(value).toLocaleString('ru-RU') : 'Ещё не использовался';
+      const populateMemoryScope = (select, selected = '') => {
+        select.replaceChildren(new Option('Все памяти переводов', ''));
+        memories.forEach(memory => select.add(new Option(`${memory.name} (${memory.source_language} → ${memory.target_language})`, memory.id)));
+        select.value = memoryIndex.has(selected) ? selected : '';
+      };
+      function generateMemoryKey() {
+        const bytes = crypto.getRandomValues(new Uint8Array(32));
+        return 'lf_tm_' + btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
+      }
+      function openMemoryKeyEditor(key) {
+        document.getElementById('edit-memory-key-id').value = key.id;
+        document.getElementById('edit-memory-key-name').value = key.name;
+        populateMemoryScope(document.getElementById('edit-memory-key-scope'), key.memory_id || '');
+        document.getElementById('edit-memory-key-secret').value = '';
+        document.getElementById('edit-memory-key-read').checked = key.can_read;
+        document.getElementById('edit-memory-key-write').checked = key.can_write;
+        document.getElementById('edit-memory-key-message').textContent = '';
+        memoryKeyOverlay.hidden = false;
+        document.getElementById('edit-memory-key-name').focus();
+      }
+      async function loadMemoryKeys() {
+        const [keysResponse, memoriesResponse] = await Promise.all([fetch('/api/admin/memory-api-keys'), fetch('/api/memories')]);
+        const keysData = await keysResponse.json(), memoriesData = await memoriesResponse.json();
+        if (!keysResponse.ok) throw new Error(keysData.detail || 'Не удалось загрузить API-ключи.');
+        if (!memoriesResponse.ok) throw new Error(memoriesData.detail || 'Не удалось загрузить памяти переводов.');
+        memories = memoriesData; memoryIndex = new Map(memories.map(memory => [memory.id, memory]));
+        const oldValue = memoryKeyScope.value; populateMemoryScope(memoryKeyScope, oldValue);
+        memoryKeysElement.replaceChildren();
+        if (!keysData.keys.length) { memoryKeysElement.innerHTML = '<tr><td colspan="5">Ключи ещё не созданы.</td></tr>'; return; }
+        keysData.keys.forEach(key => {
+          const row = document.createElement('tr'); const memory = key.memory_id && memoryIndex.get(key.memory_id);
+          const scope = memory ? `${memory.name} (${memory.source_language} → ${memory.target_language})` : key.memory_id ? 'Память удалена' : 'Все памяти';
+          [key.name, scope, key.prefix + '…', formatDate(key.last_used_at)].forEach(value => { const cell = document.createElement('td'); cell.textContent = value; row.append(cell); });
+          const action = document.createElement('td');
+          const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'edit-key'; edit.textContent = 'Изменить'; edit.addEventListener('click', () => openMemoryKeyEditor(key));
+          const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'revoke-key'; remove.textContent = 'Отозвать'; remove.addEventListener('click', async () => { if (!confirm(`Отозвать ключ «${key.name}»?`)) return; const response = await fetch(`/api/admin/memory-api-keys/${key.id}`, {method:'DELETE'}); if (!response.ok) { const body = await response.json(); document.getElementById('memory-key-message').textContent = body.detail || 'Не удалось отозвать ключ.'; return; } await loadMemoryKeys(); });
+          action.append(edit, remove); row.append(action); memoryKeysElement.append(row);
+        });
+      }
+      memoryKeyForm.addEventListener('submit', async event => {
+        event.preventDefault(); const button = memoryKeyForm.querySelector('[type="submit"]'); const message = document.getElementById('memory-key-message'); button.disabled = true; message.textContent = ''; document.getElementById('new-memory-key').hidden = true;
+        try { const response = await fetch('/api/admin/memory-api-keys', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('memory-key-name').value,memory_id:memoryKeyScope.value || null})}); const data = await response.json(); if (!response.ok) throw new Error(data.detail || 'Не удалось создать ключ.'); document.getElementById('new-memory-key-secret').value = data.secret; document.getElementById('new-memory-key').hidden = false; message.textContent = 'API-ключ создан.'; document.getElementById('memory-key-name').value = ''; await loadMemoryKeys(); }
+        catch (error) { message.textContent = error.message; } finally { button.disabled = false; }
+      });
+      document.getElementById('close-memory-key-edit').addEventListener('click', () => memoryKeyOverlay.hidden = true);
+      memoryKeyOverlay.addEventListener('click', event => { if (event.target === memoryKeyOverlay) memoryKeyOverlay.hidden = true; });
+      document.getElementById('generate-edit-memory-key').addEventListener('click', () => { document.getElementById('edit-memory-key-secret').value = generateMemoryKey(); });
+      memoryKeyEditForm.addEventListener('submit', async event => {
+        event.preventDefault(); const message = document.getElementById('edit-memory-key-message'); const button = memoryKeyEditForm.querySelector('[type="submit"]'); button.disabled = true; message.textContent = '';
+        const secret = document.getElementById('edit-memory-key-secret').value.trim();
+        try { const response = await fetch(`/api/admin/memory-api-keys/${document.getElementById('edit-memory-key-id').value}`, {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('edit-memory-key-name').value,memory_id:document.getElementById('edit-memory-key-scope').value || null,can_read:document.getElementById('edit-memory-key-read').checked,can_write:document.getElementById('edit-memory-key-write').checked,secret:secret || null})}); const data = await response.json(); if (!response.ok) throw new Error(data.detail || 'Не удалось сохранить ключ.'); message.textContent = data.secret ? 'Ключ заменён. Скопируйте его до закрытия окна.' : 'Изменения сохранены.'; await loadMemoryKeys(); }
+        catch (error) { message.textContent = error.message; } finally { button.disabled = false; }
+      });
+      document.getElementById('copy-memory-key').addEventListener('click', async () => { const value = document.getElementById('new-memory-key-secret').value; try { await navigator.clipboard.writeText(value); } catch (_) { document.getElementById('new-memory-key-secret').select(); document.execCommand('copy'); } document.getElementById('memory-key-message').textContent = 'Ключ скопирован в буфер обмена.'; });
+      loadUsers().catch(error => { usersElement.innerHTML = `<tr><td colspan="3">${escapeHtml(error.message)}</td></tr>`; });
+      loadMemoryKeys().catch(error => { memoryKeysElement.innerHTML = `<tr><td colspan="5">${escapeHtml(error.message)}</td></tr>`; });
+    </script><script src="/app-navigation.js"></script>
+  </body>
+</html>

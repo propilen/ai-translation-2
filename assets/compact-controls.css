@@ -1,0 +1,37 @@
+/* Shared sizing for select fields and adjacent form actions. */
+body select:not([multiple]):not([size]),
+body select[size="1"] {
+  box-sizing: border-box;
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 6px 44px 6px 12px !important;
+  appearance: none;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236f7890' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 18px center !important;
+  background-size: 14px 14px !important;
+  line-height: 20px;
+}
+body .create-template,
+body .new-template,
+body .test-button,
+body .document-picker,
+body .glossary-button,
+body .glossary-clear,
+body .file-button,
+body .dialog-actions > button {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px !important;
+  padding: 6px 12px !important;
+  line-height: 22px;
+}
+@media (forced-colors: active) {
+  body select:not([multiple]):not([size]), body select[size="1"] {
+    appearance: auto;
+    background-image: none !important;
+  }
+}

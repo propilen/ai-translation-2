@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LinguaFlow — Настройки перевода</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="settings.css?v=5" /><link rel="stylesheet" href="settings-layout.css?v=4" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <nav class="app-nav" aria-label="Навигация">
+        <a class="app-brand" href="/"><img src="/assets/linguaflow-logo.svg" alt="LinguaFlow" /></a>
+        <div class="app-links"><a href="/">Перевод</a><a class="is-active" href="/settings.html">Настройки</a><a href="/openxml-word-options.html">OpenXML</a><a href="/admin">Администрирование</a></div>
+        <button id="logout-button" type="button">Выйти</button>
+      </nav>
+
+      <section class="intro">
+       
+        <h1>Настройки <em>перевода</em></h1>
+        <p>Параметры применяются к новым заданиям. Уже запущенные переводы продолжают работу с прежними настройками.</p>
+      </section>
+
+      <form id="settings-form" class="settings-form">
+        <section class="settings-section">
+          <div class="section-heading"><span class="section-icon">◎</span><div><h2>Подключение к LLM</h2><p>OpenAI-совместимый API локальной или облачной модели.</p></div></div>
+          <div class="form-grid">
+            <label class="wide">Провайдер
+              <select id="provider" name="provider" required>
+                <option value="lmstudio">LM Studio (локальная модель)</option>
+                <option value="openai">OpenAI API</option>
+                <option value="gemini">Google Gemini API</option>
+              </select>
+              <small id="provider-hint">Модель определяется среди загруженных в LM Studio.</small>
+              
+            </label>
+            <label class="wide">Адрес API
+              <input id="api_url" name="api_url" type="url" required placeholder="http://192.168.2.105:1234/v1/chat/completions" />
+              <small>Полный адрес endpoint Chat Completions.</small>
+            </label>
+            <label>Модель
+              <input id="model-input" name="model" type="text" required placeholder="auto" />
+              <select id="model-select" name="model" hidden disabled></select>
+              <small id="model-hint"><code>auto</code> выберет единственную загруженную модель LM Studio.</small>
+            </label>
+            <label>API-ключ
+              <input id="api_key" name="api_key" type="password" autocomplete="new-password" placeholder="Оставьте пустым, чтобы не менять" />
+              <small id="key-state">Необязательно. Ключ не задан.</small>
+            </label>
+            <label class="checkbox-label wide"><input id="clear_api_key" type="checkbox" /> Удалить сохранённый API-ключ</label>
+            <span class="connection-row"><span id="connection-status" class="connection-status is-idle">● Подключение ещё не проверялось</span><button id="test-connection" class="test-button" type="button">Проверить подключение</button></span>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <div class="section-heading"><span class="section-icon">≋</span><div><h2>Параметры обработки</h2><p>Баланс между скоростью, качеством и ограничениями модели.</p></div></div>
+          <div class="form-grid settings-grid">
+            <label class="wide">Папка заданий
+              <input id="workspace_root" type="text" placeholder="C:\ai_trans" />
+              <small>Необязательно. Можно указать сетевой путь, например <code>\\server\translations</code>. Если оставить пустым, используется <code>C:\ai_trans</code>.</small>
+            </label>
+            <label>Сегментов в партии
+              <input id="batch_size" type="number" min="1" max="10" required />
+              <small>От 1 до 10. Для медленной модели рекомендуются 3–5.</small>
+            </label>
+            <label>Максимум токенов ответа
+              <input id="max_tokens" type="number" min="128" max="16000" required />
+              <small>Ограничение на размер ответа модели.</small>
+            </label>
+            <label>Температура
+              <input id="temperature" type="number" min="0" max="2" step="0.1" required />
+              <small>0–2. Для точного перевода обычно 0–0,3.</small>
+            </label>
+            <label>Тайм-аут запроса, сек.
+              <input id="request_timeout" type="number" min="10" max="900" required />
+              <small>Максимальное время ожидания одного ответа.</small>
+            </label>
+            <label>Повторов при ошибке API
+              <input id="api_retries" type="number" min="0" max="10" required />
+              <small>Повторяются временные ошибки, кроме 504.</small>
+            </label>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <div class="section-heading"><span class="section-icon">✦</span><div><h2>Инструкции для модели</h2><p>Добавляются перед данными сегментов и глоссарием.</p></div></div>
+          <label>Системный промт
+            <textarea id="prompt" rows="8" required></textarea>
+            <small>Не удаляйте требование сохранять XLIFF-теги и порядок сегментов.</small>
+          </label>
+        </section>
+
+        <div class="form-footer">
+          <p id="save-status" role="status" aria-live="polite"></p>
+          <button class="save-button" type="submit">Сохранить настройки <span>→</span></button>
+        </div>
+      </form>
+    </main>
+
+    <script>
+      const form = document.getElementById('settings-form');
+      const status = document.getElementById('save-status');
+      const connectionStatus = document.getElementById('connection-status');
+      const modelInput = document.getElementById('model-input');
+      const modelSelect = document.getElementById('model-select');
+      const modelHint = document.getElementById('model-hint');
+      const fields = ['workspace_root', 'provider', 'api_url', 'request_timeout', 'api_retries', 'batch_size', 'max_tokens', 'temperature', 'prompt'];
+      const providerPresets = {
+        lmstudio: { url: 'http://192.168.2.105:1234/v1/chat/completions', model: 'auto', hint: 'Модель определяется среди загруженных в LM Studio.' },
+        openai: { url: 'https://api.openai.com/v1/chat/completions', model: 'chat-latest', hint: 'Используется OpenAI API; укажите API-ключ и при необходимости измените модель.' },
+        gemini: { url: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-flash-latest', hint: 'Нативный Gemini API. Нужен ключ из Google AI Studio; адрес является базовым URL API.' }
+      };
+
+      function fillForm(settings) {
+        fields.forEach(name => document.getElementById(name).value = settings[name] ?? '');
+        setModelValue(settings.model ?? '');
+        document.getElementById('key-state').textContent = settings.api_key_configured
+          ? 'API-ключ сохранён. Введите новый ключ только для замены.'
+          : 'Необязательно. Ключ не задан.';
+        document.getElementById('provider-hint').textContent = providerPresets[settings.provider]?.hint || '';
+      }
+
+      function payloadFromForm() {
+        const payload = Object.fromEntries(fields.map(name => [name, document.getElementById(name).value]));
+        payload.model = currentModelValue();
+        ['request_timeout', 'api_retries', 'batch_size', 'max_tokens'].forEach(name => payload[name] = Number(payload[name]));
+        payload.temperature = Number(payload.temperature);
+        payload.api_key = document.getElementById('api_key').value || null;
+        payload.clear_api_key = document.getElementById('clear_api_key').checked;
+        return payload;
+      }
+
+      function currentModelValue() {
+        return modelSelect.hidden ? modelInput.value : modelSelect.value;
+      }
+
+      function setModelValue(value) {
+        if (modelSelect.hidden) {
+          modelInput.value = value;
+        } else if ([...modelSelect.options].some(option => option.value === value)) {
+          modelSelect.value = value;
+        }
+      }
+
+      function showEditableModel(value) {
+        modelSelect.hidden = true;
+        modelSelect.disabled = true;
+        modelSelect.required = false;
+        modelInput.hidden = false;
+        modelInput.disabled = false;
+        modelInput.required = true;
+        modelInput.value = value;
+      }
+
+      function showModelSelect(models, suggestedModel) {
+        const current = currentModelValue();
+        modelSelect.innerHTML = '';
+        if (!models.includes(current)) {
+          modelSelect.add(new Option('Выберите модель', ''));
+        }
+        models.forEach(model => modelSelect.add(new Option(model, model)));
+        modelInput.hidden = true;
+        modelInput.disabled = true;
+        modelInput.required = false;
+        modelSelect.hidden = false;
+        modelSelect.disabled = false;
+        modelSelect.required = true;
+        modelSelect.value = models.includes(current) ? current : (suggestedModel || '');
+        modelHint.textContent = `Доступно моделей: ${models.length}. Выберите модель из списка.`;
+      }
+
+      async function testConnection() {
+        const button = document.getElementById('test-connection');
+        button.disabled = true;
+        connectionStatus.textContent = '● Проверяем подключение к модели…';
+        connectionStatus.className = 'connection-status is-checking';
+        try {
+          const response = await fetch('/api/settings/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payloadFromForm()) });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.detail || 'Не удалось проверить подключение.');
+          if (result.models?.length) showModelSelect(result.models, result.suggested_model);
+          else showEditableModel(currentModelValue());
+          connectionStatus.textContent = `● ${result.message}`;
+          connectionStatus.className = 'connection-status is-connected';
+        } catch (error) {
+          connectionStatus.textContent = `● ${error.message}`;
+          connectionStatus.className = 'connection-status is-failed';
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      document.getElementById('provider').addEventListener('change', event => {
+        const preset = providerPresets[event.target.value];
+        document.getElementById('api_url').value = preset.url;
+        showEditableModel(preset.model);
+        modelHint.textContent = 'auto выберет единственную загруженную модель LM Studio.';
+        document.getElementById('provider-hint').textContent = preset.hint;
+      });
+
+      async function loadSettings() {
+        try {
+          const response = await fetch('/api/settings');
+          if (!response.ok) throw new Error('Не удалось загрузить настройки.');
+          fillForm(await response.json());
+        } catch (error) {
+          status.textContent = error.message;
+          status.className = 'is-error';
+        }
+      }
+
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const payload = payloadFromForm();
+        status.textContent = 'Сохраняем…';
+        status.className = '';
+        try {
+          const response = await fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.detail?.[0]?.msg || result.detail || 'Не удалось сохранить настройки.');
+          document.getElementById('api_key').value = '';
+          document.getElementById('clear_api_key').checked = false;
+          fillForm(result);
+          status.textContent = 'Настройки сохранены.';
+          status.className = 'is-success';
+        } catch (error) {
+          status.textContent = error.message;
+          status.className = 'is-error';
+        }
+      });
+      document.getElementById('test-connection').addEventListener('click', testConnection);
+      document.getElementById('logout-button').addEventListener('click', async () => {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        window.location.assign('/login');
+      });
+      loadSettings();
+    </script><script src="/app-navigation.js"></script><script src="/settings-layout.js"></script>
+  </body>
+</html>

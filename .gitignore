@@ -1,0 +1,35 @@
+# Local environments and generated output
+.venv/
+venv/
+node_modules/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+dist/
+build/
+*.tsbuildinfo
+*.log
+.DS_Store
+
+# Credentials, application databases, uploaded documents
+.env
+.env.*
+!.env.example
+data/
+*.db
+*.sqlite
+*.sqlite3
+*-wal
+*-shm
+session-secret.bin
+service-settings.json
+screens/
+*.docx
+*.xlsx
+*.pptx
+*.pdf
+*.tmx
+*.xliff
+*.xlf
+*.tsv
+~$*

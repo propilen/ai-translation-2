@@ -1,0 +1,4 @@
+.tag-selected{background:#62bdf0!important;border-color:#087ab8!important;color:#003e62!important;box-shadow:0 0 0 2px #bde8ff}
+.target-editor .tag{user-select:none;cursor:default}
+html.xliff-ctrl-held .tag:hover{background:#62bdf0;border-color:#087ab8;color:#003e62;box-shadow:0 0 0 2px #bde8ff;cursor:copy}
+html.xliff-ctrl-held .tag-pair-hover{background:#62bdf0;border-color:#087ab8;color:#003e62;box-shadow:0 0 0 2px #bde8ff}

@@ -1,0 +1,11 @@
+:root { --ink:#27324d; --muted:#758099; --blue:#3d61e8; }
+* { box-sizing:border-box; }
+body { min-height:100vh; margin:0; display:grid; place-items:center; color:var(--ink); background:radial-gradient(circle at 15% 15%,#edf1ff 0,transparent 34%),radial-gradient(circle at 90% 88%,#f6ecff 0,transparent 30%),#f8f9fd; font-family:Manrope,Arial,sans-serif; }
+.login-shell { width:min(100% - 32px,420px); }
+.login-card { padding:42px; border:1px solid rgba(221,226,239,.9); border-radius:24px; background:rgba(255,255,255,.91); box-shadow:0 24px 65px rgba(40,55,106,.15); text-align:center; }
+.brand-mark { display:grid; place-items:center; width:46px; height:46px; margin:0 auto 18px; border-radius:14px; color:#fff; background:linear-gradient(135deg,#5579f6,#3150d5); font-size:14px; font-weight:800; letter-spacing:-.05em; }
+.eyebrow { margin:0 0 7px; color:#6478d2; font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+h1 { margin:0; font-size:30px; letter-spacing:-1.2px; }.lead { margin:9px 0 28px; color:var(--muted); font-size:13px; }
+form { display:grid; gap:16px; text-align:left; } label { display:grid; gap:7px; color:#56627a; font-size:11px; font-weight:800; } input { width:100%; padding:12px; border:1px solid #dfe4ef; border-radius:9px; outline:0; color:var(--ink); background:#fff; font:600 14px Manrope; } input:focus { border-color:#9aaeff; box-shadow:0 0 0 3px #eef1ff; }
+#login-message { min-height:18px; margin:0; color:#c44b4b; font-size:11px; font-weight:700; text-align:center; } button { padding:13px 16px; border:0; border-radius:10px; color:#fff; background:linear-gradient(120deg,#4e72f5,#3253d9); box-shadow:0 10px 20px rgba(54,94,246,.24); font:800 13px Manrope; cursor:pointer; } button:disabled { opacity:.6; cursor:wait; } button span { margin-left:7px; font-size:17px; }
+.login-logo{display:block;width:202px;height:51px;margin:0 auto 18px}.brand-mark{display:none}

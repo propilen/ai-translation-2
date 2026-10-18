@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LinguaFlow — Память переводов</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="translate.css" /><link rel="stylesheet" href="memories.css?v=3" />
+  <script src="/app-navigation.js" defer></script>
+  <script src="memories.js?v=3" defer></script>
+</head>
+<body><main class="page-shell">
+  <nav id="app-nav" class="app-nav" aria-label="Навигация"></nav>
+  <section class="intro"><span class="eyebrow">Ваши переводы под рукой</span><h1>Память <em>переводов</em></h1><p>Импортируйте TMX и находите готовые переводы — с точным или частичным совпадением текста.</p></section>
+  <div class="queue-panel memory-workspace">
+    <div class="memory-tabs" role="tablist" aria-label="Разделы памяти переводов">
+      <button id="tab-search" class="memory-tab" type="button" role="tab" aria-controls="panel-search" aria-selected="true" tabindex="0">Поиск по памяти</button>
+      <button id="tab-import" class="memory-tab" type="button" role="tab" aria-controls="panel-import" aria-selected="false" tabindex="-1">Импорт TMX</button>
+    </div>
+  <section id="panel-import" class="memory-tab-panel" role="tabpanel" aria-labelledby="tab-import" hidden>
+    <div class="queue-heading"><h2 id="import-title">Импорт TMX</h2><span class="queue-count" id="step-count">Шаг 1 из 3</span></div>
+    <ol class="steps"><li aria-current="step">1. Файл</li><li>2. Параметры</li><li>3. Проверка</li></ol>
+    <form id="import-form">
+      <fieldset id="step-1"><legend>Выберите файл на компьютере</legend><label class="drop-zone" for="tmx"><strong>Добавить память переводов</strong><span>Формат TMX</span><input id="tmx" type="file" accept=".tmx" required /></label><p id="filename" class="file-name"></p></fieldset>
+      <fieldset id="step-2" hidden><legend>Параметры памяти</legend><div class="memory-grid">
+        <label class="wide">Добавить в<select id="import-destination"><option value="">Новую память переводов</option></select></label>
+        <label>Название <span class="optional">необязательно</span><input id="memory-name" maxlength="200" placeholder="Название файла" /></label>
+        <label>Описание <span class="optional">необязательно</span><input id="description" maxlength="2000" placeholder="Проект, заказчик или тематика" /></label>
+        <label>Код языка оригинала<input id="source" required maxlength="40" placeholder="Например, en-US" /></label>
+        <label>Код языка перевода<input id="target" required maxlength="40" placeholder="Например, ru-RU" /></label>
+      </div><p class="hint">Укажите точные коды xml:lang из файла TMX: en и en-US — разные языковые варианты. Для многоязычного файла будет импортирована выбранная пара.</p></fieldset>
+      <fieldset id="step-3" hidden><legend>Всё готово к импорту</legend><p id="review" class="review"></p><p class="hint">При добавлении в существующую память новые пары будут добавлены, а дубликаты пропущены. Сегменты без выбранной пары языков будут пропущены.</p></fieldset>
+      <div class="actions"><button class="glossary-button" id="back" type="button" hidden>Назад</button><button class="translate-button" id="next" type="button">Продолжить →</button><button class="translate-button" id="import" type="submit" hidden>Загрузить и импортировать</button></div>
+      <p id="import-status" class="message" role="status" aria-live="polite"></p>
+    </form>
+  </section>
+  <section id="panel-search" class="memory-tab-panel" role="tabpanel" aria-labelledby="tab-search">
+    <div class="queue-heading"><h2 id="search-title">Поиск по памяти</h2><div class="download-actions"><a id="download-tmx" class="glossary-button" hidden>Скачать TMX</a><a id="download" class="glossary-button" hidden>Скачать SQLite</a></div></div>
+    <form id="search-form"><div class="memory-grid">
+      <label>Загруженная память<select id="memory" required><option value="">Загрузка…</option></select></label>
+      <label>Режим поиска<select id="search-mode"><option value="fuzzy">По сходству (Fuzzy)</option><option value="words">Все слова</option><option value="phrase">Точная фраза</option><option value="all">Все режимы</option></select></label>
+      <label id="threshold-field">Минимальное сходство, %<input id="threshold" type="number" min="0" max="100" value="70" required /></label>
+    </div><p id="memory-details" class="hint"></p>
+    <div class="query-grid">
+      <label class="query-label" for="query">Текст оригинала<textarea id="query" rows="3" maxlength="10000" placeholder="Введите текст оригинала"></textarea><span id="source-regex-status" class="hint" aria-live="polite"></span></label>
+      <label class="query-label" for="target-query">Текст перевода<textarea id="target-query" rows="3" maxlength="10000" placeholder="Введите текст перевода"></textarea><span id="target-regex-status" class="hint" aria-live="polite"></span></label>
+    </div>
+    <div class="search-options"><label><input id="respect-case" type="checkbox" /> Соблюдать регистр</label><label><input id="use-regex" type="checkbox" /> Использовать регулярные выражения</label></div>
+    <p id="search-hint" class="hint">Можно заполнить оригинал, перевод или оба поля. Если заполнены оба, совпадение должно соответствовать обоим условиям.</p>
+    <button id="search-button" class="translate-button" type="submit" disabled>Найти перевод</button></form>
+    <p id="search-status" class="message" role="status" aria-live="polite"></p><div id="results" class="results"></div>
+  </section>
+  </div>
+</main></body></html>

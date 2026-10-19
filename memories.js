@@ -120,11 +120,11 @@ $('search-form').addEventListener('submit', async event => {
       head.append(header); table.append(head); const body = document.createElement('tbody');
       data.results.forEach(item => {
         const row = document.createElement('tr'), number = document.createElement('td'), source = document.createElement('td'), result = document.createElement('td'), target = document.createElement('td');
-        row.tabIndex = 0; row.setAttribute('aria-label', `Сегмент ${item.tuid || item.id}`);
+        row.tabIndex = 0; row.setAttribute('aria-label', `Сегмент ${item.id}`);
         const select = () => { table.querySelectorAll('tbody tr.is-selected').forEach(current => current.classList.remove('is-selected')); row.classList.add('is-selected'); };
         row.addEventListener('click', select); row.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); select(); } });
         number.className = 'segment-number'; source.className = target.className = 'cell-text'; result.className = 'match-mode';
-        number.textContent = item.tuid || item.id; result.textContent = modeLabel(item, mode);
+        number.textContent = item.id; result.textContent = modeLabel(item, mode);
         const textMode = mode === 'all' && item.matched_modes.includes('phrase') ? 'phrase' : mode;
         appendHighlightedText(source, item.source, query, textMode, respectCase, useRegex); source.append(copyButton(item.source, 'оригинал'));
         appendHighlightedText(target, item.target, targetQuery, textMode, respectCase, useRegex); target.append(copyButton(item.target, 'перевод'));

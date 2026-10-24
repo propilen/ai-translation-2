@@ -158,5 +158,14 @@ class WorkerTests(unittest.TestCase):
         response = self.workers[0].send("check_grammar_batch", lang="ru", texts=["Эти автомобили едут.", "Автомобили едет."])
         self.assertEqual(len(response["issues"]), 2)
         self.assertEqual(response["issues"][0], [])
+
+    def test_grammar_regression_corpus_and_placeholders(self):
+        bad = ["Она должен быть неподвижна.", "Машина приехал.", "Автомобили едет.", "Новая автомобили стоят возле дома."]
+        good = ["Она должна быть неподвижна.", "Машина приехала.", "Автомобили едут.", "Автомобиль %1 был припаркован."]
+        for worker in self.workers:
+            for text in bad:
+                self.assertTrue(worker.send("check_grammar", lang="ru", text=text)["issues"], text)
+            for text in good:
+                self.assertEqual(worker.send("check_grammar", lang="ru", text=text)["issues"], [], text)
 if __name__ == "__main__":
     unittest.main()

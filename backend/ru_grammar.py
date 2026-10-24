@@ -38,6 +38,25 @@ def _morph(token) -> dict[str, str]:
     return {key: value for key, value in token.morph.to_dict().items() if value}
 
 
+_PYMORPHY_TO_UD = {"nomn": "Nom", "gent": "Gen", "datv": "Dat", "accs": "Acc", "ablt": "Ins", "loct": "Loc",
+                   "sing": "Sing", "plur": "Plur", "masc": "Masc", "femn": "Fem", "neut": "Neut",
+                   "pres": "Pres", "past": "Past", "futr": "Fut", "1per": "1", "2per": "2", "3per": "3"}
+
+
+def normalize_pymorphy_grammemes(grammemes) -> dict[str, str]:
+    """Convert pymorphy grammemes to UD names without losing multi-values."""
+    result: dict[str, list[str]] = {}
+    for raw in grammemes:
+        value = _PYMORPHY_TO_UD.get(str(raw).lower())
+        if value is None:
+            continue
+        key = {"Nom": "Case", "Gen": "Case", "Dat": "Case", "Acc": "Case", "Ins": "Case", "Loc": "Case",
+               "Sing": "Number", "Plur": "Number", "Masc": "Gender", "Fem": "Gender", "Neut": "Gender",
+               "Pres": "Tense", "Past": "Tense", "Fut": "Tense", "1": "Person", "2": "Person", "3": "Person"}[value]
+        result.setdefault(key, []).append(value)
+    return {key: ",".join(dict.fromkeys(values)) for key, values in result.items()}
+
+
 def _tokens(doc) -> list[RuToken]:
     utf16 = _utf16_offsets(doc.text)
     return [RuToken(t.i, t.text, t.lemma_, t.pos_, t.dep_, t.head.i,
@@ -68,7 +87,12 @@ def analyze_docs(docs: Iterable, texts: list[str]) -> list[dict]:
 
 def _feature(token: RuToken, name: str) -> str | None:
     value = token.morph.get(name)
-    return value[0] if value else None
+    return value
+
+
+def _feature_values(token: RuToken, name: str) -> set[str]:
+    value = _feature(token, name)
+    return set(value.split(",")) if value else set()
 
 
 def _parse_candidates(morph: pymorphy3.MorphAnalyzer, token: RuToken):
@@ -78,13 +102,19 @@ def _parse_candidates(morph: pymorphy3.MorphAnalyzer, token: RuToken):
 def _compatible(subject: RuToken, predicate: RuToken, name: str, morph: pymorphy3.MorphAnalyzer) -> bool | None:
     left, right = _feature(subject, name), _feature(predicate, name)
     if left and right:
-        return left == right
+        return bool(_feature_values(subject, name) & _feature_values(predicate, name))
     # spaCy is authoritative for the dependency relation. Use pymorphy only to
     # fill missing features; ambiguity means we deliberately abstain.
     parses = _parse_candidates(morph, predicate)
-    values = {getattr(p.tag, name.lower(), None) for p in parses}
-    values.discard(None)
-    return None if len(values) != 1 or not left else left == next(iter(values))
+    values = set()
+    for parse in parses:
+        values.update(normalize_pymorphy_grammemes(parse.tag.grammemes).get(name, "").split(","))
+    values.discard("")
+    if not left or not values:
+        return None
+    if _feature_values(subject, name) & values:
+        return True
+    return False if len(values) == 1 else None
 
 
 def _issue(rule_id: str, message: str, a: RuToken, b: RuToken, *, features: dict, text: str) -> dict:
@@ -99,9 +129,11 @@ def _check_doc(doc, text: str, morph: pymorphy3.MorphAnalyzer) -> list[dict]:
     tokens = _tokens(doc)
     issues: list[dict] = []
     for token in tokens:
-        if token.dep == "amod" and token.head_index != token.index:
+        if token.dep in {"amod", "acl", "acl:relcl"} and token.head_index != token.index:
             head = tokens[token.head_index]
             if head.pos in {"NOUN", "PROPN"}:
+                if token.pos == "VERB" and _feature(token, "VerbForm") != "Part":
+                    continue
                 checks = [("Number", "RU_ADJ_NOUN_AGREEMENT"), ("Case", "RU_ADJ_NOUN_AGREEMENT")]
                 if _feature(head, "Number") == "Sing": checks.append(("Gender", "RU_ADJ_NOUN_AGREEMENT"))
                 for name, rule in checks:
@@ -115,7 +147,9 @@ def _check_doc(doc, text: str, morph: pymorphy3.MorphAnalyzer) -> list[dict]:
             if head.pos in {"NOUN", "PROPN"} and _feature(token, "Number") and _feature(head, "Number") and _feature(token, "Number") != _feature(head, "Number"):
                 issues.append(_issue("RU_DET_NOUN_AGREEMENT", "Determiner and noun do not agree in number.", token, head,
                                      features={"determiner_number": _feature(token, "Number"), "noun_number": _feature(head, "Number")}, text=text))
-        if token.dep == "nsubj" and token.head_index != token.index:
+        if token.dep == "nsubj" or token.dep.startswith("nsubj:"):
+            if token.head_index == token.index:
+                continue
             predicate = tokens[token.head_index]
             if predicate.pos in {"ADJ", "VERB", "AUX"}:
                 number = _compatible(token, predicate, "Number", morph)
@@ -135,7 +169,9 @@ def _check_doc(doc, text: str, morph: pymorphy3.MorphAnalyzer) -> list[dict]:
     # Keep one high-confidence issue for a relation instead of duplicate copula diagnostics.
     unique = {}
     for item in issues:
-        key = (item["rule_id"], item["start_utf16"], item["end_utf16"])
+        # One subject/predicate disagreement must not become a gender issue
+        # and a second generic verb issue for the same token pair.
+        key = (item["start_utf16"], item["end_utf16"])
         unique.setdefault(key, item)
     return list(unique.values())
 

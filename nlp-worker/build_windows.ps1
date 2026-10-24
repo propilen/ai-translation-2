@@ -27,6 +27,8 @@ for lang in ('ru','en','de'):
     nlp.init_nlp(lang)
     nlp.lemmatize('Fahrzeuge vehicles', lang)
     print(lang, 'model OK')
+nlp.ensure_ru_grammar()
+print('ru grammar model OK')
 '@
 Push-Location $projectRoot
 try {

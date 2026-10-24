@@ -7,7 +7,7 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 if (-not $Python) { $Python = Join-Path $projectRoot '.venv\Scripts\python.exe' }
 if (-not $OutputDirectory) { $OutputDirectory = 'nlp-worker/dist' }
-if (-not (Test-Path -LiteralPath $Python -PathType Leaf)) { throw "Python not found: $Python. Create the build venv and install requirements-build.txt and both spaCy models." }
+if (-not (Test-Path -LiteralPath $Python -PathType Leaf)) { throw "Python not found: $Python. Create the build venv and install requirements-build.txt and all three spaCy models." }
 if (-not [Environment]::Is64BitOperatingSystem -or -not [Environment]::Is64BitProcess) { throw 'Windows x64 and a 64-bit PowerShell process are required.' }
 if ($env:OS -ne 'Windows_NT') { throw 'Run this script on Windows x64.' }
 
@@ -29,7 +29,7 @@ for lang in ('ru','en','de'):
     print(lang, 'model OK')
 nlp.ensure_ru_grammar()
 print('ru grammar model OK')
-issues = nlp.check_grammar_ru(['Эти автомобиль быстро едет.'])[0]
+issues = nlp.check_grammar_ru(['\u042d\u0442\u0438 \u0430\u0432\u0442\u043e\u043c\u043e\u0431\u0438\u043b\u044c \u0431\u044b\u0441\u0442\u0440\u043e \u0435\u0434\u0435\u0442.'])[0]
 if not issues:
     raise SystemExit('Russian grammar pipeline preflight returned no issues for diagnostic text')
 print('ru grammar pipeline OK')

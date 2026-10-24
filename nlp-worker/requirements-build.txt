@@ -5,5 +5,4 @@ spacy==3.8.16
 Nuitka==4.2.2
 ordered-set==4.1.0
 zstandard==0.25.0
-ru-core-news-sm==3.8.0
 # spaCy model wheels are installed from their official release assets (README).

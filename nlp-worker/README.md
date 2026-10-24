@@ -21,7 +21,7 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r nlp-worker\requirements-build.txt
 .\.venv\Scripts\python.exe -m pip install "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
 .\.venv\Scripts\python.exe -m pip install "https://github.com/explosion/spacy-models/releases/download/de_core_news_sm-3.8.0/de_core_news_sm-3.8.0-py3-none-any.whl"
-.\\.venv\\Scripts\\python.exe -m pip install "https://github.com/explosion/spacy-models/releases/download/ru_core_news_sm-3.8.0/ru_core_news_sm-3.8.0-py3-none-any.whl"
+.\.venv\Scripts\python.exe -m pip install "https://github.com/explosion/spacy-models/releases/download/ru_core_news_sm-3.8.0/ru_core_news_sm-3.8.0-py3-none-any.whl"
 powershell -NoProfile -ExecutionPolicy Bypass -File nlp-worker\build_windows.ps1
 ```
 

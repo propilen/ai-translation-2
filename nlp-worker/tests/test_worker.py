@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from backend import nlp_glossary as direct
+from backend.domain_lexicon import DomainLexicon
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -47,6 +48,11 @@ class WorkerProcess:
 
 
 class WorkerTests(unittest.TestCase):
+    def test_optional_domain_lexicon_is_conservative(self):
+        lexicon = DomainLexicon()
+        self.assertEqual(lexicon.lookup("Wi-Fi").gender, "Masc")
+        self.assertIsNone(lexicon.lookup("XYZ"))
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.tsv = Path(self.temp.name) / "terms.tsv"
@@ -166,6 +172,29 @@ class WorkerTests(unittest.TestCase):
                 self.assertTrue(worker.send("check_grammar", lang="ru", text=text)["issues"], text)
             for text in good:
                 self.assertEqual(worker.send("check_grammar", lang="ru", text=text)["issues"], [], text)
+
+    def test_coordinated_subjects_and_dependency_diagnostic(self):
+        good = [
+            "точка доступа в автомобиле и Wi-Fi отключены",
+            "Камера и радар отключены.",
+            "Водитель и пассажир пристёгнуты.",
+            "Телефон и Bluetooth подключены.",
+            "Навигация и CarPlay доступны.",
+        ]
+        bad = [
+            "точка доступа в автомобиле и Wi-Fi отключен",
+            "Камера и радар отключен.",
+            "Водитель и пассажир пристёгнут.",
+        ]
+        for worker in self.workers:
+            for text in good:
+                issues = worker.send("check_grammar", lang="ru", text=text)["issues"]
+                if any(issue["rule_id"].startswith("RU_SUBJECT_") for issue in issues):
+                    diagnostic = worker.send("analyze", lang="ru", text=text)
+                    self.fail(f"coordinated subject false positive for {text}: {issues}; parse={diagnostic}")
+            for text in bad:
+                issues = worker.send("check_grammar", lang="ru", text=text)["issues"]
+                self.assertTrue(any(issue["rule_id"].startswith("RU_SUBJECT_") for issue in issues), text)
 
     def test_specific_subject_rules_auxiliary_participle_and_long_smoke(self):
         for worker in self.workers:

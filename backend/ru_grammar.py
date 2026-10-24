@@ -95,6 +95,74 @@ def _feature_values(token: RuToken, name: str) -> set[str]:
     return set(value.split(",")) if value else set()
 
 
+_NOMINAL_BRIDGES = {"nmod", "nmod:poss", "appos", "flat", "flat:name", "compound", "amod", "case", "det", "conj"}
+
+
+def _is_nominal(token: RuToken) -> bool:
+    return token.pos in {"NOUN", "PROPN", "X"}
+
+
+def _has_additive_cc(tokens: list[RuToken], token: RuToken) -> bool:
+    """Return true only for a high-confidence ``и`` conjunction."""
+    for candidate in tokens:
+        if candidate.dep == "cc" and candidate.head_index == token.index and candidate.text.casefold() == "и":
+            return True
+    previous = tokens[token.index - 1] if token.index > 0 else None
+    return bool(previous and previous.text.casefold() == "и")
+
+
+def subject_group(tokens: list[RuToken], subject: RuToken) -> list[RuToken]:
+    """Find additive coordinated nominal members of an ``nsubj`` phrase.
+
+    The parser sometimes attaches a foreign conjunct below an oblique noun
+    inside the subject phrase (for example ``... в автомобиле и Wi-Fi``), so
+    the walk follows nominal bridge dependencies before inspecting ``conj``.
+    Only an explicit ``и`` is accepted; ``или``/``либо`` remain ambiguous.
+    """
+    children: dict[int, list[RuToken]] = {}
+    for token in tokens:
+        children.setdefault(token.head_index, []).append(token)
+    members = [subject]
+    seen: set[int] = {subject.index}
+
+    def walk(parent: RuToken) -> None:
+        for child in children.get(parent.index, []):
+            if child.index in seen:
+                continue
+            if child.dep == "conj":
+                if _is_nominal(child) and _has_additive_cc(tokens, child):
+                    members.append(child)
+                    seen.add(child.index)
+                    walk(child)
+                continue
+            if child.dep in _NOMINAL_BRIDGES:
+                seen.add(child.index)
+                walk(child)
+
+    walk(subject)
+    return members if len(members) > 1 else []
+
+
+def _group_number(subject: RuToken, group: list[RuToken], predicate: RuToken, morph: pymorphy3.MorphAnalyzer) -> bool | None:
+    if not group:
+        return _compatible(subject, predicate, "Number", morph)
+    values = _feature_values(predicate, "Number")
+    # spaCy can mis-tag a short/indeclinable predicate as plural.  When
+    # pymorphy gives one unambiguous number, use it for this high-confidence
+    # coordinated-subject comparison; ambiguity still abstains.
+    pymorphy_values = set()
+    for parse in _parse_candidates(morph, predicate):
+        pymorphy_values.update(normalize_pymorphy_grammemes(parse.tag.grammemes).get("Number", "").split(","))
+    pymorphy_values.discard("")
+    if len(pymorphy_values) == 1:
+        values = pymorphy_values
+    if not values:
+        return _compatible(subject, predicate, "Number", morph)
+    if "Plur" in values:
+        return True
+    return None if len(values) > 1 else False
+
+
 def _parse_candidates(morph: pymorphy3.MorphAnalyzer, token: RuToken):
     return morph.parse(token.text)
 
@@ -155,21 +223,22 @@ def _check_doc(doc, text: str, morph: pymorphy3.MorphAnalyzer) -> list[dict]:
                 continue
             predicate = tokens[token.head_index]
             if predicate.pos in {"ADJ", "VERB", "AUX"}:
+                coordinated = subject_group(tokens, token)
                 if predicate.pos == "VERB":
-                    number = _compatible(token, predicate, "Number", morph)
-                    gender = _compatible(token, predicate, "Gender", morph)
+                    number = _group_number(token, coordinated, predicate, morph)
+                    gender = None if coordinated else _compatible(token, predicate, "Gender", morph)
                     tense = _feature(predicate, "Tense")
                     rule = "RU_SUBJECT_PAST_VERB_AGREEMENT" if tense == "Past" else "RU_SUBJECT_FINITE_VERB_NUMBER"
                     if number is False or (tense == "Past" and gender is False):
                         issues.append(_issue(rule, "Subject and verb do not agree.", token, predicate,
                                              features={"subject_number": _feature(token, "Number"), "verb_number": _feature(predicate, "Number"), "subject_gender": _feature(token, "Gender"), "verb_gender": _feature(predicate, "Gender")}, text=text))
                 else:
-                    number = _compatible(token, predicate, "Number", morph)
+                    number = _group_number(token, coordinated, predicate, morph)
                     if number is False:
                         issues.append(_issue("RU_SUBJECT_PREDICATIVE_NUMBER", "Subject and predicate do not agree in number.", token, predicate,
                                              features={"subject_number": _feature(token, "Number"), "predicate_number": _feature(predicate, "Number")}, text=text))
-                    gender = _compatible(token, predicate, "Gender", morph)
-                    if gender is False and _feature(token, "Number") == "Sing":
+                    gender = None if coordinated else _compatible(token, predicate, "Gender", morph)
+                    if gender is False and not coordinated and _feature(token, "Number") == "Sing":
                         issues.append(_issue("RU_SUBJECT_PREDICATIVE_GENDER", "Subject and predicate do not agree in gender.", token, predicate,
                                              features={"subject_gender": _feature(token, "Gender"), "predicate_gender": _feature(predicate, "Gender"), "number": _feature(token, "Number")}, text=text))
 

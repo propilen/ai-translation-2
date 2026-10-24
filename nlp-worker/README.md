@@ -46,6 +46,10 @@ $env:NLP_WORKER_EXE = (Resolve-Path nlp-worker\dist\worker.dist\nlp-worker.exe).
 | `find_terms` | `glossary_id`, `lang`, `text`, необязательный `threshold` | `terms:[{"source":"...","target":"..."}]` |
 | `find_terms_batch` | `glossary_id`, `lang`, `texts:[...]`, необязательный `threshold` | `terms:[[...], ...]` |
 | `unload_glossary` | `glossary_id` | `unloaded:true` |
+| `analyze` | `lang:"ru"`, `text` | `sentences:[...]` |
+| `analyze_batch` | `lang:"ru"`, `texts:[...]` | `sentences:[[...], ...]` |
+| `check_grammar` | `lang:"ru"`, `text` | `issues:[...]` |
+| `check_grammar_batch` | `lang:"ru"`, `texts:[...]` | `issues:[[...], ...]` |
 | `shutdown` | — | `status:"shutdown"`, затем процесс завершится |
 
 Пример последовательных строк:
@@ -77,6 +81,21 @@ mvn -f nlp-worker/java-client/pom.xml exec:java `
 `NlpWorkerClient` запускает процесс через `ProcessBuilder`, читает stdout и stderr в отдельных потоках, сопоставляет ответы по `id`, возвращает `CompletableFuture<JsonNode>` и применяет тайм-аут. Создавайте и закрывайте клиент вне Swing EDT; `request()` можно вызывать с EDT, а результат обрабатывайте через `thenAccept`/`whenComplete` с передачей изменений интерфейса в `SwingUtilities.invokeLater`. Вызов `.get()` с EDT запрещён: он блокирует интерфейс. При неожиданном завершении процесса ожидающие запросы получают исключение. `close()` отправляет `shutdown` и при необходимости завершает процесс принудительно. Smoke test охватывает 100 поисковых запросов, вызов с EDT, ошибку протокола и неожиданное завершение процесса.
 
 ## Проверки и ограничения
+
+### Russian grammar QA (v1)
+
+`ru_core_news_sm==3.8.0` is loaded lazily only for `analyze` and
+`check_grammar`; `ping` and the existing pymorphy3 `lemmatize` path do not load
+the Russian spaCy model. Grammar actions support only `lang:"ru"` and return
+`UNSUPPORTED_GRAMMAR_LANGUAGE` for other languages. `analyze` and
+`analyze_batch` return dependency tokens with both code-point and UTF-16
+offsets. `check_grammar` and `check_grammar_batch` return only conservative,
+high-confidence agreement findings with stable `rule_id`, evidence features,
+context, and no automatic corrections. Batch actions use `nlp.pipe()` and
+preserve input order. Current rules cover adjective/noun, determiner/noun,
+subject/predicate gender and number, finite/past verb agreement, and obvious
+participle relations; risky coordinated-subject and government rules remain
+disabled.
 
 `tests/test_worker.py` сравнивает ответы с прямыми вызовами исходных функций для ru/en/de, пустого текста, Unicode, пунктуации, словоформ, многословных/пересекающихся/повторяющихся и коротких терминов, порогов `0`, `0.85`, `0.86`, `1`; отдельно отправляет 1000 запросов в один процесс. Существующий веб-сервис сохраняет собственный путь вызова NLP и не зависит от worker.
 

@@ -15,7 +15,7 @@ $check = @'
 import importlib.metadata as m
 import platform
 import sys
-expected = {'pymorphy3':'2.0.6', 'pymorphy3-dicts-ru':'2.4.417150.4580142', 'spacy':'3.8.16', 'en-core-web-sm':'3.8.0', 'de-core-news-sm':'3.8.0', 'Nuitka':'4.2.2'}
+expected = {'pymorphy3':'2.0.6', 'pymorphy3-dicts-ru':'2.4.417150.4580142', 'spacy':'3.8.16', 'en-core-web-sm':'3.8.0', 'de-core-news-sm':'3.8.0', 'ru-core-news-sm':'3.8.0', 'Nuitka':'4.2.2'}
 if sys.version_info[:2] != (3, 11) or platform.machine().lower() not in ('amd64', 'x86_64'):
     raise SystemExit('Build requires Python 3.11 x64')
 for name, version in expected.items():
@@ -36,12 +36,13 @@ try {
         '-m', 'nuitka', '--mode=standalone', '--assume-yes-for-downloads',
         ('--output-dir=' + $OutputDirectory), '--output-filename=nlp-worker.exe',
         '--spacy-language-model=en_core_web_sm', '--spacy-language-model=de_core_news_sm',
+        '--spacy-language-model=ru_core_news_sm',
         '--include-module=backend.nlp_glossary',
-        '--include-package=en_core_web_sm', '--include-package=de_core_news_sm',
+        '--include-package=en_core_web_sm', '--include-package=de_core_news_sm', '--include-package=ru_core_news_sm',
         '--include-package=pymorphy3_dicts_ru',
         '--include-package-data=pymorphy3_dicts_ru',
         '--include-distribution-metadata=spacy',
-        '--include-distribution-metadata=en_core_web_sm', '--include-distribution-metadata=de_core_news_sm',
+        '--include-distribution-metadata=en_core_web_sm', '--include-distribution-metadata=de_core_news_sm', '--include-distribution-metadata=ru_core_news_sm',
         'nlp-worker/worker.py'
     )
     & $Python @arguments

@@ -47,6 +47,13 @@ class WorkerProtocol:
         return lang
 
     @staticmethod
+    def _grammar_lang(request: dict) -> str:
+        lang = WorkerProtocol._string(request, "lang", nonempty=True).lower()
+        if lang != "ru":
+            raise ProtocolError("UNSUPPORTED_GRAMMAR_LANGUAGE", f"Grammar analysis supports only ru, not {lang}")
+        return lang
+
+    @staticmethod
     def _threshold(request: dict) -> float:
         value = request.get("threshold", 0.86)
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 1:
@@ -89,6 +96,18 @@ class WorkerProtocol:
             self._ensure_model(lang)
             lemmas = [nlp.lemmatize(text, lang) for text in texts]
             result["lemmas"] = lemmas[0] if action == "lemmatize" else lemmas
+        elif action in {"analyze", "analyze_batch", "check_grammar", "check_grammar_batch"}:
+            self._grammar_lang(request)
+            texts = [self._string(request, "text")] if action in {"analyze", "check_grammar"} else self._texts(request)
+            try:
+                if action in {"analyze", "analyze_batch"}:
+                    analyses = nlp.analyze_ru(texts)
+                    result["sentences"] = analyses[0]["sentences"] if action == "analyze" else [item["sentences"] for item in analyses]
+                else:
+                    issues = nlp.check_grammar_ru(texts)
+                    result["issues"] = issues[0] if action == "check_grammar" else issues
+            except Exception as error:
+                raise ProtocolError("NLP_MODEL_ERROR", f"Could not analyze Russian text: {error}") from error
         elif action == "load_glossary":
             glossary_id = self._string(request, "glossary_id", nonempty=True)
             lang = self._lang(request)

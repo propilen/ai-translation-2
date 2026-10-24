@@ -136,6 +136,27 @@ class WorkerTests(unittest.TestCase):
             self.assertEqual(worker.send("lemmatize", lang="de", text="Die Fahrzeuge")["lemmas"],
                              ["der", "fahrzeug"])
 
+    def test_grammar_protocol_validation(self):
+        protocol = WorkerProtocol()
+        with self.assertRaises(ProtocolError) as error:
+            protocol.dispatch({"id": 1, "action": "analyze", "lang": "en", "text": "Cars move."})
+        self.assertEqual(error.exception.code, "UNSUPPORTED_GRAMMAR_LANGUAGE")
 
+    def test_russian_grammar_and_offsets(self):
+        try:
+            response = self.workers[0].send("check_grammar", lang="ru", text="Эти автомобиль быстро едет.")
+        except AssertionError:
+            raise
+        self.assertTrue(response["ok"])
+        self.assertTrue(any(issue["rule_id"] == "RU_DET_NOUN_AGREEMENT" for issue in response["issues"]))
+        emoji = "😀 Эти автомобиль"
+        analysis = self.workers[0].send("analyze", lang="ru", text=emoji)
+        token = next(item for item in analysis["sentences"][0]["tokens"] if item["text"] == "Эти")
+        self.assertGreater(token["start_utf16"], token["start_cp"])
+
+    def test_grammar_batch_preserves_order(self):
+        response = self.workers[0].send("check_grammar_batch", lang="ru", texts=["Эти автомобили едут.", "Автомобили едет."])
+        self.assertEqual(len(response["issues"]), 2)
+        self.assertEqual(response["issues"][0], [])
 if __name__ == "__main__":
     unittest.main()

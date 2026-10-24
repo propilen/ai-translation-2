@@ -13,6 +13,7 @@ import spacy
 morph_ru = None
 nlp_en = None
 nlp_de = None
+nlp_ru = None
 
 
 def init_nlp(source_lang: str):
@@ -55,6 +56,26 @@ def lemmatize(text, lang):
     if lang == "de":
         return lemmatize_de(text)
     raise ValueError("lang must be en/de/ru")
+
+
+def ensure_ru_grammar():
+    global morph_ru, nlp_ru
+    if morph_ru is None:
+        morph_ru = pymorphy3.MorphAnalyzer()
+    if nlp_ru is None:
+        nlp_ru = spacy.load("ru_core_news_sm", exclude=["ner"])
+    return nlp_ru
+
+
+def analyze_ru(texts: list[str]) -> list[dict]:
+    from backend import ru_grammar
+    return ru_grammar.analyze(ensure_ru_grammar(), texts)
+
+
+def check_grammar_ru(texts: list[str]) -> list[list[dict]]:
+    from backend import ru_grammar
+    nlp = ensure_ru_grammar()
+    return ru_grammar.check(nlp, morph_ru, texts)
 
 
 def load_glossary(path: Path | None, source_lang: str) -> list[dict]:

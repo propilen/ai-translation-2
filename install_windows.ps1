@@ -130,6 +130,7 @@ Write-Host "Устанавливаем Python-зависимости и язык
 & $venvPython -m pip install -r (Join-Path $InstallPath "requirements.txt")
 & $venvPython -m spacy download en_core_web_sm
 & $venvPython -m spacy download de_core_news_sm
+& $venvPython -m spacy download ru_core_news_sm
 
 $tikalExe = Install-Okapi
 New-Item -ItemType Directory -Path $WorkspaceRoot -Force | Out-Null

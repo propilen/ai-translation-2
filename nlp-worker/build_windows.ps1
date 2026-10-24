@@ -29,6 +29,10 @@ for lang in ('ru','en','de'):
     print(lang, 'model OK')
 nlp.ensure_ru_grammar()
 print('ru grammar model OK')
+issues = nlp.check_grammar_ru(['Эти автомобиль быстро едет.'])[0]
+if not issues:
+    raise SystemExit('Russian grammar pipeline preflight returned no issues for diagnostic text')
+print('ru grammar pipeline OK')
 '@
 Push-Location $projectRoot
 try {

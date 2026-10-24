@@ -132,15 +132,18 @@ def _check_doc(doc, text: str, morph: pymorphy3.MorphAnalyzer) -> list[dict]:
         if token.dep in {"amod", "acl", "acl:relcl"} and token.head_index != token.index:
             head = tokens[token.head_index]
             if head.pos in {"NOUN", "PROPN"}:
-                if token.pos == "VERB" and _feature(token, "VerbForm") != "Part":
+                is_participle = token.pos == "VERB" and _feature(token, "VerbForm") == "Part"
+                if token.pos == "VERB" and not is_participle:
                     continue
-                checks = [("Number", "RU_ADJ_NOUN_AGREEMENT"), ("Case", "RU_ADJ_NOUN_AGREEMENT")]
-                if _feature(head, "Number") == "Sing": checks.append(("Gender", "RU_ADJ_NOUN_AGREEMENT"))
+                agreement_rule = "RU_PARTICIPLE_NOUN_AGREEMENT" if is_participle else "RU_ADJ_NOUN_AGREEMENT"
+                agreement_message = "Participle and noun do not agree" if is_participle else "Adjective and noun do not agree"
+                checks = [("Number", agreement_rule), ("Case", agreement_rule)]
+                if _feature(head, "Number") == "Sing": checks.append(("Gender", agreement_rule))
                 for name, rule in checks:
                     value = _compatible(token, head, name, morph)
                     if value is False:
-                        issues.append(_issue(rule, f"Adjective and noun do not agree in {name.lower()}.", token, head,
-                                             features={"adjective_" + name.lower(): _feature(token, name), "noun_" + name.lower(): _feature(head, name)}, text=text))
+                        issues.append(_issue(rule, f"{agreement_message} in {name.lower()}.", token, head,
+                                             features={"modifier_" + name.lower(): _feature(token, name), "noun_" + name.lower(): _feature(head, name)}, text=text))
                         break
         if token.dep in {"det", "nmod:poss"} and token.head_index != token.index:
             head = tokens[token.head_index]
@@ -152,20 +155,35 @@ def _check_doc(doc, text: str, morph: pymorphy3.MorphAnalyzer) -> list[dict]:
                 continue
             predicate = tokens[token.head_index]
             if predicate.pos in {"ADJ", "VERB", "AUX"}:
-                number = _compatible(token, predicate, "Number", morph)
-                if number is False:
-                    issues.append(_issue("RU_SUBJECT_PREDICATIVE_NUMBER", "Subject and predicate do not agree in number.", token, predicate,
-                                         features={"subject_number": _feature(token, "Number"), "predicate_number": _feature(predicate, "Number")}, text=text))
-                gender = _compatible(token, predicate, "Gender", morph)
-                if gender is False and _feature(token, "Number") == "Sing":
-                    issues.append(_issue("RU_SUBJECT_PREDICATIVE_GENDER", "Subject and predicate do not agree in gender.", token, predicate,
-                                         features={"subject_gender": _feature(token, "Gender"), "predicate_gender": _feature(predicate, "Gender"), "number": _feature(token, "Number")}, text=text))
                 if predicate.pos == "VERB":
+                    number = _compatible(token, predicate, "Number", morph)
+                    gender = _compatible(token, predicate, "Gender", morph)
                     tense = _feature(predicate, "Tense")
                     rule = "RU_SUBJECT_PAST_VERB_AGREEMENT" if tense == "Past" else "RU_SUBJECT_FINITE_VERB_NUMBER"
                     if number is False or (tense == "Past" and gender is False):
                         issues.append(_issue(rule, "Subject and verb do not agree.", token, predicate,
                                              features={"subject_number": _feature(token, "Number"), "verb_number": _feature(predicate, "Number"), "subject_gender": _feature(token, "Gender"), "verb_gender": _feature(predicate, "Gender")}, text=text))
+                else:
+                    number = _compatible(token, predicate, "Number", morph)
+                    if number is False:
+                        issues.append(_issue("RU_SUBJECT_PREDICATIVE_NUMBER", "Subject and predicate do not agree in number.", token, predicate,
+                                             features={"subject_number": _feature(token, "Number"), "predicate_number": _feature(predicate, "Number")}, text=text))
+                    gender = _compatible(token, predicate, "Gender", morph)
+                    if gender is False and _feature(token, "Number") == "Sing":
+                        issues.append(_issue("RU_SUBJECT_PREDICATIVE_GENDER", "Subject and predicate do not agree in gender.", token, predicate,
+                                             features={"subject_gender": _feature(token, "Gender"), "predicate_gender": _feature(predicate, "Gender"), "number": _feature(token, "Number")}, text=text))
+
+                # In a compound verbal predicate the auxiliary carries the
+                # finite agreement.  Check it against the subject separately;
+                # do not infer an error when morphology is ambiguous.
+                for auxiliary in tokens:
+                    if auxiliary.head_index != predicate.index or not (auxiliary.dep == "aux" or auxiliary.dep.startswith("aux:") or auxiliary.dep == "cop"):
+                        continue
+                    aux_number = _compatible(token, auxiliary, "Number", morph)
+                    aux_gender = _compatible(token, auxiliary, "Gender", morph)
+                    if aux_number is False or (_feature(auxiliary, "Tense") == "Past" and _feature(token, "Number") == "Sing" and aux_gender is False):
+                        issues.append(_issue("RU_SUBJECT_AUX_AGREEMENT", "Subject and auxiliary do not agree.", token, auxiliary,
+                                             features={"subject_number": _feature(token, "Number"), "aux_number": _feature(auxiliary, "Number"), "subject_gender": _feature(token, "Gender"), "aux_gender": _feature(auxiliary, "Gender")}, text=text))
     # Keep one high-confidence issue for a relation instead of duplicate copula diagnostics.
     unique = {}
     for item in issues:

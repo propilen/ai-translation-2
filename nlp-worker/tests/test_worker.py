@@ -143,29 +143,47 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(error.exception.code, "UNSUPPORTED_GRAMMAR_LANGUAGE")
 
     def test_russian_grammar_and_offsets(self):
-        try:
-            response = self.workers[0].send("check_grammar", lang="ru", text="Эти автомобиль быстро едет.")
-        except AssertionError:
-            raise
-        self.assertTrue(response["ok"])
-        self.assertTrue(any(issue["rule_id"] == "RU_DET_NOUN_AGREEMENT" for issue in response["issues"]))
-        emoji = "😀 Эти автомобиль"
-        analysis = self.workers[0].send("analyze", lang="ru", text=emoji)
-        token = next(item for item in analysis["sentences"][0]["tokens"] if item["text"] == "Эти")
-        self.assertGreater(token["start_utf16"], token["start_cp"])
+        for worker in self.workers:
+            response = worker.send("check_grammar", lang="ru", text="Эти автомобиль быстро едет.")
+            self.assertTrue(response["ok"])
+            self.assertTrue(any(issue["rule_id"] == "RU_DET_NOUN_AGREEMENT" for issue in response["issues"]))
+            emoji = "😀 Эти автомобиль"
+            analysis = worker.send("analyze", lang="ru", text=emoji)
+            token = next(item for item in analysis["sentences"][0]["tokens"] if item["text"] == "Эти")
+            self.assertGreater(token["start_utf16"], token["start_cp"])
 
     def test_grammar_batch_preserves_order(self):
-        response = self.workers[0].send("check_grammar_batch", lang="ru", texts=["Эти автомобили едут.", "Автомобили едет."])
-        self.assertEqual(len(response["issues"]), 2)
-        self.assertEqual(response["issues"][0], [])
+        for worker in self.workers:
+            response = worker.send("check_grammar_batch", lang="ru", texts=["Эти автомобили едут.", "Автомобили едет."])
+            self.assertEqual(len(response["issues"]), 2)
+            self.assertEqual(response["issues"][0], [])
 
     def test_grammar_regression_corpus_and_placeholders(self):
-        bad = ["Она должен быть неподвижна.", "Машина приехал.", "Автомобили едет.", "Новая автомобили стоят возле дома."]
-        good = ["Она должна быть неподвижна.", "Машина приехала.", "Автомобили едут.", "Автомобиль %1 был припаркован."]
+        bad = ["Она должен быть неподвижна.", "Машина приехал.", "Автомобили едет.", "Новая автомобили стоят возле дома.", "Машина были припаркована возле дома."]
+        good = ["Она должна быть неподвижна.", "Машина приехала.", "Автомобили едут.", "Автомобиль %1 был припаркован.", "Машина была припаркована возле дома."]
         for worker in self.workers:
             for text in bad:
                 self.assertTrue(worker.send("check_grammar", lang="ru", text=text)["issues"], text)
             for text in good:
                 self.assertEqual(worker.send("check_grammar", lang="ru", text=text)["issues"], [], text)
+
+    def test_specific_subject_rules_auxiliary_participle_and_long_smoke(self):
+        for worker in self.workers:
+            past = worker.send("check_grammar", lang="ru", text="Машина приехал.")["issues"]
+            self.assertIn("RU_SUBJECT_PAST_VERB_AGREEMENT", {issue["rule_id"] for issue in past})
+            self.assertNotIn("RU_SUBJECT_PREDICATIVE_NUMBER", {issue["rule_id"] for issue in past})
+            finite = worker.send("check_grammar", lang="ru", text="Автомобили едет.")["issues"]
+            self.assertIn("RU_SUBJECT_FINITE_VERB_NUMBER", {issue["rule_id"] for issue in finite})
+            aux = worker.send("check_grammar", lang="ru", text="Машина были припаркована возле дома.")["issues"]
+            aux_issues = [issue for issue in aux if issue["rule_id"] == "RU_SUBJECT_AUX_AGREEMENT"]
+            self.assertTrue(aux_issues)
+            self.assertIn("были", aux_issues[0]["context"])
+            participle = worker.send("check_grammar", lang="ru", text="Автомобиль, припаркованная возле дома, стоит.")["issues"]
+            self.assertTrue(any(issue["rule_id"] == "RU_PARTICIPLE_NOUN_AGREEMENT" for issue in participle))
+            smoke_text = "Чтобы автомобиль мог свободно катиться, она должен быть неподвижен, педаль тормоза нажата, передача N включена и задействован стояночный тормоз."
+            smoke = worker.send("check_grammar", lang="ru", text=smoke_text)["issues"]
+            if not any("она" in issue["context"].lower() and "должен" in issue["context"].lower() for issue in smoke):
+                diagnostic = worker.send("analyze", lang="ru", text=smoke_text)
+                self.fail(f"long smoke did not produce она/должен issue; dependency parse: {diagnostic}")
 if __name__ == "__main__":
     unittest.main()
